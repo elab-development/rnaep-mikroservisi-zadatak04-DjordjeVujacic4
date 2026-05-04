@@ -1,0 +1,91 @@
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  inventory:
+    build: ./inventory
+    container_name: inventory
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      SERVICE_HOST: 0.0.0.0
+      SERVICE_PORT: 8000
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  inventory-consumer:
+    build: ./inventory
+    container_name: inventory-consumer
+    command: ["python", "-u", "consumer.py"]
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+    depends_on:
+      - redis
+      - inventory
+    networks:
+      - app-network
+
+  payment:
+    build: ./payment
+    container_name: payment
+    ports:
+      - "8001:8001"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      INVENTORY_SERVICE_URL: http://inventory:8000
+      SERVICE_HOST: 0.0.0.0
+      SERVICE_PORT: 8001
+    depends_on:
+      - redis
+      - inventory
+    networks:
+      - app-network
+
+  payment-consumer:
+    build: ./payment
+    container_name: payment-consumer
+    command: ["python", "-u", "consumer.py"]
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+    depends_on:
+      - redis
+      - payment
+    networks:
+      - app-network
+
+  notification-consumer:
+    build: ./notification
+    container_name: notification-consumer
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

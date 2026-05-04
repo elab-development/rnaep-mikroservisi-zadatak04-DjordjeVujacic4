@@ -2,3 +2,6 @@
 .env
 inventory/.env
 payment/.env
+notification/.env
+__pycache__/
+*.pyc
